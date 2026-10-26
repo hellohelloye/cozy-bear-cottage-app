@@ -1,0 +1,46 @@
+/* Cozy Bear Cottage — design merged from Vivian McDonald's artwork.
+   Light-blue palette at her direction (orange removed, Oct 20, 2026).
+   Her paintings themselves are never recolored. */
+:root {
+  --paper: #eaf6fb;
+  --ink: #23404f;
+  --accent: #a8d8ea;      /* light blue */
+  --accent-deep: #5aa7c7;
+  --card: #ffffff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--paper); color: var(--ink); }
+main { max-width: 720px; margin: 0 auto; padding: 0 16px 48px; }
+.rainbow-stripe { height: 10px; border-radius: 0 0 8px 8px;
+  background: linear-gradient(90deg, #ef6f6f, #a8d8ea, #ffd93d, #8fce7e, #b8a9e8, #f7a8c4); }
+header { text-align: center; padding: 20px 0 8px; }
+.mascot { width: 132px; height: 132px; object-fit: contain; }
+h1 { margin: 8px 0 4px; font-size: 2rem; }
+.tagline { margin: 0; font-size: 1.05rem; }
+.credit { color: var(--accent-deep); font-weight: 600; }
+nav { display: flex; gap: 8px; justify-content: center; margin: 16px 0 24px; flex-wrap: wrap; }
+nav button, section button { border: 2px solid var(--accent-deep); background: var(--card);
+  color: var(--ink); border-radius: 999px; padding: 10px 18px; font-size: 1rem; cursor: pointer; }
+nav button.active { background: var(--accent); }
+section { background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 2px 10px rgba(35,64,79,.08); }
+input { display: block; width: 100%; padding: 10px; margin: 6px 0 12px; border: 2px solid var(--accent);
+  border-radius: 10px; font-size: 1rem; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+.card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 8px; border-radius: 14px; }
+.card img { width: 100%; height: 110px; object-fit: contain; }
+.card-emoji { font-size: 3rem; }
+.card-zh { font-size: 1.6rem; font-weight: 700; }
+.tap-photo { width: 100%; border-radius: 14px; cursor: crosshair; }
+.upload { display: block; margin: 12px 0; }
+.named { font-size: 1.4rem; font-weight: 700; text-align: center; }
+.targets { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.hint { color: #56707e; }
+footer { text-align: center; color: #56707e; margin-top: 24px; font-size: .9rem; }
+
+/* Print pipeline: flashcards + trace worksheets, clean on paper. */
+@media print {
+  nav, header, footer, .hint, button { display: none !important; }
+  body { background: #fff; }
+  .card-grid { grid-template-columns: repeat(3, 1fr); }
+  .card { border: 1px dashed #999; break-inside: avoid; }
+}
