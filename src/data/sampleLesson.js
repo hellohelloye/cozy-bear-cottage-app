@@ -7,6 +7,7 @@ export const sampleLesson = {
   ageRange: '3-6',
   minutes: 45,
   openingSong: '《颜色歌》 — point to each color card as it is named',
+  closingSong: '《再见歌》 — wave and sing 再见 to Cozy Bear',
   words: [
     { zh: '红色', pinyin: 'hóng sè', en: 'red', emoji: '🍎' },
     { zh: '蓝色', pinyin: 'lán sè', en: 'blue', emoji: '💙' },

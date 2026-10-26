@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import LessonBuilder from './features/LessonBuilder.jsx';
 import Flashcards from './features/Flashcards.jsx';
 import PointAndSay from './features/PointAndSay.jsx';
@@ -15,8 +15,33 @@ const TABS = [
   { id: 'say', label: 'Point-and-Say 指着说' }
 ];
 
+const STORAGE_KEY = 'cozy-bear-lesson-v1';
+
+function loadSavedLesson() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || !saved.lesson || !Array.isArray(saved.lesson.words) || !saved.lesson.words.length) return null;
+    return saved;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [tab, setTab] = useState('lesson');
+  const [saved] = useState(loadSavedLesson);
+  const [lesson, setLesson] = useState(() => saved?.lesson || sampleLesson);
+  const [themeId, setThemeId] = useState(() => saved?.themeId || 'colors');
+  const [ageRange, setAgeRange] = useState(() => saved?.ageRange || saved?.lesson?.ageRange || '3-6');
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ lesson, themeId, ageRange }));
+    } catch { /* private mode / quota: lesson still works in memory */ }
+  }, [lesson, themeId, ageRange]);
+
   return (
     <main>
       <div className="rainbow-stripe" aria-hidden />
@@ -29,9 +54,18 @@ export default function App() {
       <nav>{TABS.map((t) => (
         <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>{t.label}</button>
       ))}</nav>
-      {tab === 'lesson' && <LessonBuilder />}
-      {tab === 'cards' && <Flashcards words={sampleLesson.words} />}
-      {tab === 'say' && <PointAndSay targetWords={sampleLesson.words} />}
+      {tab === 'lesson' && (
+        <LessonBuilder
+          lesson={lesson}
+          themeId={themeId}
+          ageRange={ageRange}
+          onThemeChange={setThemeId}
+          onAgeChange={setAgeRange}
+          onLesson={setLesson}
+        />
+      )}
+      {tab === 'cards' && <Flashcards words={lesson.words} themeLabel={lesson.theme} />}
+      {tab === 'say' && <PointAndSay targetWords={lesson.words} themeLabel={lesson.theme} />}
       <footer>
         <p>Built with Muse Spark · Muse Image · SAM 3.1 (Meta Model API) · React + Vite (PWA) · Web Speech API</p>
       </footer>

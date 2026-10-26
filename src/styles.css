@@ -35,12 +35,43 @@ input { display: block; width: 100%; padding: 10px; margin: 6px 0 12px; border: 
 .named { font-size: 1.4rem; font-weight: 700; text-align: center; }
 .targets { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .hint { color: #56707e; }
+.error { color: #9c2b2b; font-weight: 600; }
 footer { text-align: center; color: #56707e; margin-top: 24px; font-size: .9rem; }
+.picker-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.picker-row label { flex: 1 1 200px; font-weight: 600; }
+select { display: block; width: 100%; padding: 10px; margin: 6px 0 12px; border: 2px solid var(--accent);
+  border-radius: 10px; font-size: 1rem; background: var(--card); color: var(--ink); }
+.pack-title { margin: 24px 0 4px; }
+.photo-wrap { position: relative; }
+.tap-marker { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%;
+  border: 3px solid #fff; background: rgba(90, 167, 199, .45); box-shadow: 0 0 0 2px var(--accent-deep); pointer-events: none; }
+.tap-box { position: absolute; border: 3px solid var(--accent-deep); border-radius: 10px;
+  background: rgba(168, 216, 234, .25); pointer-events: none; }
+.camera-box video { width: 100%; border-radius: 14px; background: #000; }
+.camera-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+.camera-actions .upload { margin: 0; }
+.celebrate { background: #fff7cc; border: 2px solid #e3c93e; border-radius: 12px; padding: 10px 14px;
+  font-weight: 700; text-align: center; }
+.trace-grid, .color-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+.trace-card, .color-card { display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 14px 8px; border: 2px solid var(--accent); border-radius: 14px; text-align: center; }
+.trace-model { font-size: 2.2rem; font-weight: 700; }
+.trace-guide { font-size: 2.2rem; color: transparent; -webkit-text-stroke: 1px #9fc6d8; letter-spacing: 4px; }
+.trace-empty { font-size: 2.2rem; color: transparent; border-bottom: 2px dashed #9fc6d8; letter-spacing: 4px; min-height: 1em; }
+.trace-label { color: #56707e; font-size: .9rem; }
+.color-emoji { font-size: 3rem; filter: grayscale(1); opacity: .55; }
+@media (prefers-reduced-motion: no-preference) {
+  .tap-marker { animation: tap-pulse 1s ease-out 2; }
+  @keyframes tap-pulse { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.4); opacity: .5; } }
+}
 
 /* Print pipeline: flashcards + trace worksheets, clean on paper. */
 @media print {
-  nav, header, footer, .hint, button { display: none !important; }
+  nav, header, footer, .hint, button, .camera-actions, .picker-row, .error { display: none !important; }
   body { background: #fff; }
-  .card-grid { grid-template-columns: repeat(3, 1fr); }
-  .card { border: 1px dashed #999; break-inside: avoid; }
+  section { box-shadow: none; }
+  .card-grid, .trace-grid, .color-grid { grid-template-columns: repeat(3, 1fr); }
+  .card, .trace-card, .color-card { border: 1px dashed #999; break-inside: avoid; }
+  .pack-title { break-before: page; }
+  .trace-guide { -webkit-text-stroke: 1px #bbb; }
 }
