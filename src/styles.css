@@ -16,6 +16,12 @@ main { width: 100%; max-width: 1600px; margin: 0 auto; padding: 0 clamp(16px, 4v
   background: linear-gradient(90deg, #ef6f6f, #a8d8ea, #ffd93d, #8fce7e, #b8a9e8, #f7a8c4); }
 header { text-align: center; padding: clamp(20px, 3vw, 40px) 0 8px; }
 .mascot { width: clamp(110px, 14vw, 180px); height: clamp(110px, 14vw, 180px); object-fit: contain; }
+.hero-bears { display: flex; gap: clamp(12px, 3vw, 32px); justify-content: center; align-items: flex-end;
+  background: transparent; padding: clamp(12px, 2vw, 24px); max-width: 860px; margin: 0 auto; flex-wrap: wrap; }
+.hero-bear { width: clamp(120px, 22vw, 220px); height: auto; object-fit: contain; }
+.welcome-art, .feature-art { display: block; width: 100%; max-width: 480px; height: auto; margin: 12px auto; }
+.feature-art { max-width: 320px; }
+.sticker-reward { display: block; width: clamp(100px, 18vw, 160px); height: auto; margin: 10px auto; }
 h1 { margin: 8px 0 4px; font-size: clamp(2rem, 5vw, 3.4rem); }
 .tagline { margin: 0; font-size: clamp(1.05rem, 2vw, 1.35rem); }
 .credit { color: var(--accent-deep); font-weight: 600; }

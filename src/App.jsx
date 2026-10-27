@@ -46,7 +46,11 @@ export default function App() {
     <main>
       <div className="rainbow-stripe" aria-hidden />
       <header>
-        <img src="/assets/bear-reading.jpg" alt="Cozy Bear, reading his book" className="mascot" />
+        <div className="hero-bears">
+          <img src="/assets/stickers/rainbow-pony-cutout.png" alt="Vivian's rainbow pony" className="hero-bear" />
+          <img src="/assets/cutouts/white-bear.png" alt="Cozy Bear" className="hero-bear" />
+          <img src="/assets/stickers/fairy-ballerina-cutout.png" alt="Vivian's fairy ballerina" className="hero-bear" />
+        </div>
         <h1>Cozy Bear Cottage</h1>
         <p className="tagline">小熊中文 · An AI co-teacher for weekend Chinese classes, ages 3–6</p>
         <p className="credit">Visual design by Vivian McDonald</p>

@@ -23,6 +23,7 @@ export default function Flashcards({ words, themeLabel }) {
   return (
     <section>
       <h2>Living Flashcards 闪卡</h2>
+      <img src="/assets/cutouts/feature-flashcards.png" alt="Cozy Bear with flashcards" className="feature-art" />
       {themeLabel && <p className="hint">This week: {themeLabel} — tap a card to hear the word.</p>}
       <button onClick={() => window.print()}>Print the pack (flashcards + worksheets)</button>
 

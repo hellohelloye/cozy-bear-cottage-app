@@ -19,6 +19,13 @@ async function photoToDataUrl(src) {
   });
 }
 
+const STICKERS = [
+  'rainbow-heart-mandala-2-cutout', 'rainbow-pony-cutout', 'baby-unicorn-cutout',
+  'fairy-ballerina-cutout', 'rainbow-apple-cutout', 'cupcake-cherry-cutout',
+  'watermelon-slice-happy-cutout', 'brachiosaurus-rainbow-cutout', 'dotted-flower-cutout',
+  'sunflower-rainbow-cutout', 'purple-butterfly-cutout', 'rainbow-pinwheel-cutout'
+];
+
 export default function PointAndSay({ targetWords, themeLabel }) {
   const imgRef = useRef(null);
   const videoRef = useRef(null);
@@ -45,7 +52,12 @@ export default function PointAndSay({ targetWords, themeLabel }) {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
   }, []);
 
-  function earnStar() { setStars((s) => s + 1); }
+  const [sticker, setSticker] = useState(null);
+
+  function earnStar() {
+    setStars((s) => s + 1);
+    setSticker(STICKERS[Math.floor(Math.random() * STICKERS.length)]);
+  }
 
   function setUploadedPhoto(url) {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
@@ -155,6 +167,7 @@ export default function PointAndSay({ targetWords, themeLabel }) {
   return (
     <section>
       <h2>Point-and-Say 指着说</h2>
+      <img src="/assets/cutouts/feature-point-say.png" alt="Cozy Bear point and say" className="feature-art" />
       <p>Tap anything in the picture and hear its Chinese name.{themeLabel ? ` This week: ${themeLabel}.` : ''}</p>
 
       {cameraOn ? (
@@ -195,6 +208,7 @@ export default function PointAndSay({ targetWords, themeLabel }) {
       </div>
 
       {found && <p className="celebrate" role="status">🎉 You found {found.zh} — {found.en}! You found a word of the week!</p>}
+      {sticker && <img src={`/assets/stickers/${sticker}.png`} alt="Your sticker reward from Vivian" className="sticker-reward" />}
       {result && (
         <p className="named">
           {result.zh} {result.pinyin} {result.en && `— ${result.en}`}
