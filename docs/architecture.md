@@ -70,25 +70,37 @@ Browser fans out one `POST {kind:"image"}` per word in parallel. Proxy calls
 (WebP) which the proxy re-serves as a `data:` URL. Null image -> emoji card.
 Print stylesheet emits 3 sheets: cards, tracing, coloring.
 
-### 3.3 Point-and-Say (SAM 3.1 + Spark)
+### 3.3 Point-and-Say (SAM 3.1 + Spark vision)
+
+Naming and outlining are separate paths (both verified live, Oct 27, 2026):
 
 ```mermaid
 sequenceDiagram
   participant C as Child
   participant PS as PointAndSay
   participant P as /api/meta
-  participant SAM as sam-3.1 (/responses)
-  participant S as muse-spark-1.3
-  C->>PS: tap photo (point normalized 0..1)
+  participant S as muse-spark-1.3 (vision)
+  participant SAM as sam-3.1 (video)
+  C->>PS: tap photo (point normalized 0..1, winter-puppy default)
   PS->>P: {kind:"segment", payload:{image: dataURL, point}}
-  P->>SAM: input_text(point) + input_image
-  SAM-->>P: segmentation (box/label when format available)
-  P->>S: naming prompt (label/point -> zh/pinyin/en)
-  S-->>P: {zh, pinyin, en}
-  P-->>PS: {zh, pinyin, en, box}
-  PS->>C: highlight + speakChinese(zh) + star + sticker
-  Note over SAM: Known gap: /responses accepts image+point but returned<br/>empty text in live probes (Oct 27, 2026). UI falls back to<br/>target-word practice; extraction code is format-ready.
+  P->>S: chat/completions with photo + point
+  S-->>P: {zh, pinyin, en, box} (coarse outline)
+  P-->>PS: name + box -> highlight, speak, star, sticker
+  PS->>PS: photo -> ~1s clip (canvas + MediaRecorder, best-effort)
+  PS->>P: {kind:"segment", payload:{video: clip, concept: en}}
+  P->>SAM: POST /responses, input_text(concept) + input_video
+  SAM-->>P: "<Nf><id><|box;...|><|mask;...|>" per frame
+  P->>P: parseSamTokens -> first frame, normalized box + mask geometry
+  P-->>PS: {box, mask} -> tighter outline replaces vision box
 ```
+
+Why two paths: SAM 3.1 on this API is a **video tracker**, not an image
+segmenter — still-image calls return empty text, while a video + concept
+prompt returns native tokens:
+`<Nf><objectId><|box;x1;y1;x2;y2;w;h|><|mask;x;y[;c];data=<H>,<W>,<enc><payload>|>`
+(box in frame pixels, normalized by `w/h` in `parseSamTokens`). Mask
+payload decoding is retained raw; the UI currently renders the box.
+If either path yields nothing, target-word practice keeps the game playable.
 
 ### 3.4 Songs
 
@@ -108,6 +120,7 @@ and persist per category in `localStorage`.
 | `lesson` | `{theme, ageRange}` | lesson JSON: `{theme, ageRange, minutes, openingSong, closingSong, words[{zh,pinyin,en,emoji}], story, games[2], script[{zh,en}]}` |
 | `image` | `{prompt}` | `{url}` (https or `data:image/*;base64,…`) |
 | `segment` | `{image: dataURL, point:{x,y} 0..1}` | `{zh, pinyin, en, box?, mask?}` or `{}` (= no result, UI falls back) |
+| `segment` (video) | `{video: dataURL, concept}` | `{label, frame, objectId, box, mask:{x,y,confidence,height,width,encoding,data}}` or `{}` |
 
 Errors: `405` non-POST · `400` unknown kind / invalid payload ·
 `503` key/base unset · `502` upstream failure/timeout (60s budget).
@@ -127,6 +140,9 @@ overrides. Secrets live only in Vercel env; `.env.example` stays empty.
   plain `npm run dev` works for UI-only work with fallbacks.
 - **Data:** no database. Runtime state = React state + `localStorage`
   (lesson, stars, pasted song links). Content data ships as static JS.
+- **Tests:** `npm test` — Node built-in runner, [tests/meta-proxy.test.mjs](../tests/meta-proxy.test.mjs)
+  (5 tests, upstream stubbed): SAM-empty -> vision naming regression,
+  SAM token parsing + video branch, point validation, lesson parsing.
 
 ## 6. Key decisions & trade-offs
 
@@ -145,8 +161,11 @@ overrides. Secrets live only in Vercel env; `.env.example` stays empty.
 
 ## 7. Known gaps / next steps
 
-- SAM 3.1 response format (see 3.3) — needs Meta's SAM output doc; then
-  mask rendering (today: box overlay only).
+- Mask *rendering*: SAM mask payload is parsed (geometry + raw data) but
+  not yet decoded to pixels — the UI draws the SAM box. Decode the `~`
+  payload encoding to finish true outline rendering.
+- Still-photo SAM path depends on browser `MediaRecorder` clip capture
+  (best-effort); unsupported browsers keep the vision box.
 - Real-browser QA (video embeds, camera, print) — pending owner pass.
 - Key hygiene: rotate any key shared out-of-band; update Vercel secret.
 - Submission track: Nov 2 Saturday-class test -> Nov 3 demo recording ->
