@@ -104,6 +104,28 @@ function responsesText(data) {
   return '';
 }
 
+/** Working tap-naming path (verified live): Spark vision sees the photo
+ *  and the tap point, and names that object with a normalized box. */
+async function nameWithSparkVision(payload) {
+  const body = {
+    model: MODELS.spark,
+    max_tokens: 1500,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `A child tapped the object at normalized point x=${payload.point.x.toFixed(3)}, y=${payload.point.y.toFixed(3)} in this photo. Name that ONE object for a Chinese beginner (age 3-6). Return ONLY JSON {"zh":"simplified characters","pinyin":"tone marks","en":"english","box":{"x":0,"y":0,"width":0,"height":0}} with box normalized 0..1 around the tapped object.`
+        },
+        { type: 'image_url', image_url: { url: payload.image } }
+      ]
+    }]
+  };
+  const r = await callUpstream(ROUTES.lesson, body);
+  if (!r.ok) return null;
+  return parseJsonText(chatContent(r.data));
+}
+
 async function nameWithSpark(label, payload) {
   const body = {
     model: MODELS.spark,
@@ -184,14 +206,16 @@ export default async function handler(req, res) {
     const seg = await callUpstream(ROUTES.segment, segmentBody(payload));
     if (!seg.ok) return res.status(seg.status).json(seg.data);
     const segJson = parseJsonText(responsesText(seg.data));
-    const box = segJson?.box || segJson?.bbox || null;
+    const segBox = segJson?.box || segJson?.bbox || null;
     const label = segJson?.label || segJson?.en || segJson?.zh || '';
-    const named = segJson?.zh
-      ? { zh: segJson.zh, pinyin: segJson.pinyin || '', en: segJson.en || label }
-      : await nameWithSpark(label, payload);
+    let named = segJson?.zh
+      ? { zh: segJson.zh, pinyin: segJson.pinyin || '', en: segJson.en || label, box: segBox }
+      : await nameWithSparkVision(payload);
+    if ((!named || !named.zh) && label) named = await nameWithSpark(label, payload);
     if (!named || !named.zh) return res.status(200).json({});
     return res.status(200).json({
-      zh: named.zh, pinyin: named.pinyin || '', en: named.en || label, mask: null, box
+      zh: named.zh, pinyin: named.pinyin || '', en: named.en || label,
+      mask: null, box: named.box || segBox
     });
   } catch (err) {
     const timedOut = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
