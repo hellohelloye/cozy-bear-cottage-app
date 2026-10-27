@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { generateLesson } from '../lib/metaApi.js';
 import { AGE_RANGES, THEMES } from '../data/themes.js';
+import SongPlayer from './SongPlayer.jsx';
 
 // Lesson Builder — Muse Spark end-to-end.
 // Theme + age come from the Chinese Playtime catalog (src/data/themes.js);
@@ -44,6 +45,7 @@ export default function LessonBuilder({ lesson, themeId, ageRange, onThemeChange
       <p><strong>Opening song:</strong> {lesson.openingSong}</p>
       {lesson.closingSong && <p><strong>Closing song:</strong> {lesson.closingSong}</p>}
       <p><strong>Story:</strong> {lesson.story}</p>
+      <SongPlayer themeId={themeId} themeLabel={lesson.theme} words={lesson.words} ageRange={ageRange} />
       <h4>Words of the week</h4>
       <ul>{lesson.words.map((w) => <li key={w.zh}>{w.emoji} {w.zh} · {w.pinyin} · {w.en}</li>)}</ul>
       <h4>Games</h4>
