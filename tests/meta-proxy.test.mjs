@@ -62,6 +62,43 @@ test('segment names the tapped object via Spark vision when SAM text is empty', 
   assert.deepEqual(r.body.box, { x: 0.1, y: 0.1, width: 0.5, height: 0.5 });
 });
 
+test('parseSamTokens normalizes SAM box and mask geometry', async () => {
+  const { parseSamTokens } = await import('../api/meta.js');
+  const text = '<25f>0<|box;x1=397;y1=194;x2=557;y2=347;w=960;h=540|><|mask;x=0;y=0;data=154,161,~abc123|>';
+  const objects = parseSamTokens(text);
+  assert.equal(objects.length, 1);
+  assert.equal(objects[0].frame, 25);
+  assert.ok(Math.abs(objects[0].box.x - 397 / 960) < 1e-9);
+  assert.ok(Math.abs(objects[0].box.height - (347 - 194) / 540) < 1e-9);
+  assert.equal(objects[0].mask.height, 154);
+  assert.equal(objects[0].mask.width, 161);
+  assert.deepEqual(parseSamTokens(''), []);
+  assert.deepEqual(parseSamTokens('no tokens here'), []);
+});
+
+test('segment with video returns first SAM object box and mask', async () => {
+  stubFetch((url, body) => {
+    assert.ok(url.endsWith('/responses'));
+    assert.equal(body.input[0].content[0].text, 'flower');
+    return {
+      output: [{
+        content: [{
+          type: 'output_text',
+          text: '<0f>0<|box;x1=480;y1=270;x2=960;y2=540;w=960;h=540|><|mask;x=1;y=2;c=0.9;data=10,20,~zz|>'
+        }]
+      }]
+    };
+  });
+  const r = mockRes();
+  await handler(
+    { method: 'POST', body: { kind: 'segment', payload: { video: 'data:video/mp4;base64,xx', concept: 'flower' } } },
+    r
+  );
+  assert.equal(r.code, 200);
+  assert.deepEqual(r.body.box, { x: 0.5, y: 0.5, width: 0.5, height: 0.5 });
+  assert.equal(r.body.mask.confidence, 0.9);
+});
+
 test('segment rejects out-of-range tap points', async () => {
   const r = mockRes();
   await handler(

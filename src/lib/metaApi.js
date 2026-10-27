@@ -78,6 +78,18 @@ export async function nameTappedObject(imageDataUrl, point) {
   }
 }
 
+/** SAM 3.1 video segmentation: clip + concept -> { box, mask, frame } for
+ *  the first tracked object, or null. Box is normalized 0..1. */
+export async function segmentConcept(videoDataUrl, concept) {
+  try {
+    const data = await callProxy('segment', { video: videoDataUrl, concept });
+    if (!data || !data.box) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 /** Browser speech: speak Chinese aloud (Web Speech API, zh-CN voice). */
 export function speakChinese(text) {
   if (!('speechSynthesis' in window)) return;

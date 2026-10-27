@@ -94,6 +94,55 @@ function segmentBody(payload) {
   };
 }
 
+/** SAM 3.1 native output (video tracking):
+ *  <Nf><id><|box;x1=..;y1=..;x2=..;y2=..;w=..;h=..|><|mask;x=..;y=..[;c=..];data=<H>,<W>,<enc><payload>|>
+ *  Box coords are pixels on the w x h frame; mask data is H,W then payload. */
+export function parseSamTokens(text) {
+  if (!text || typeof text !== 'string') return [];
+  const re = /<(\d+)f>(\d+)<\|box;x1=([\d.]+);y1=([\d.]+);x2=([\d.]+);y2=([\d.]+);w=([\d.]+);h=([\d.]+)\|>(?:<\|mask;x=([\d.]+);y=([\d.]+)(?:;c=([\d.]+))?;data=(\d+),(\d+),([^\|]*)\|>)?/g;
+  const out = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const [, frame, id, x1, y1, x2, y2, w, h, mx, my, conf, mh, mw, payload] = m;
+    const W = Number(w) || 1;
+    const H = Number(h) || 1;
+    out.push({
+      frame: Number(frame),
+      objectId: Number(id),
+      box: {
+        x: Number(x1) / W,
+        y: Number(y1) / H,
+        width: (Number(x2) - Number(x1)) / W,
+        height: (Number(y2) - Number(y1)) / H
+      },
+      mask: payload !== undefined
+        ? {
+            x: Number(mx), y: Number(my),
+            confidence: conf !== undefined ? Number(conf) : null,
+            height: Number(mh), width: Number(mw),
+            encoding: (payload || '').charAt(0) || null,
+            data: payload || ''
+          }
+        : null
+    });
+  }
+  return out.sort((a, b) => a.frame - b.frame);
+}
+
+function segmentVideoBody(payload) {
+  return {
+    model: MODELS.sam,
+    max_output_tokens: 2000,
+    input: [{
+      role: 'user',
+      content: [
+        { type: 'input_text', text: payload.concept },
+        { type: 'input_video', video_url: payload.video }
+      ]
+    }]
+  };
+}
+
 function responsesText(data) {
   const out = data?.output || [];
   for (const item of out) {
@@ -156,8 +205,12 @@ function validate(kind, payload) {
   if (kind === 'lesson' && !String(payload.theme || '').trim()) return 'lesson requires payload.theme';
   if (kind === 'image' && !String(payload.prompt || '').trim()) return 'image requires payload.prompt';
   if (kind === 'segment') {
-    if (!String(payload.image || '').trim()) return 'segment requires payload.image (data URL)';
-    if (!validPoint(payload.point)) return 'segment requires payload.point {x,y} each 0..1';
+    if (payload.video) {
+      if (!String(payload.concept || '').trim()) return 'segment with video requires payload.concept';
+    } else {
+      if (!String(payload.image || '').trim()) return 'segment requires payload.image (data URL)';
+      if (!validPoint(payload.point)) return 'segment requires payload.point {x,y} each 0..1';
+    }
   }
   return null;
 }
@@ -199,10 +252,20 @@ export default async function handler(req, res) {
       }
       return res.status(502).json({ error: 'Image model returned no image' });
     }
+    // segment with a video clip: SAM 3.1 is a video tracker — concept text
+    // in, per-frame <Nf> box/mask tokens out (verified live Oct 27, 2026).
+    if (payload.video) {
+      const seg = await callUpstream(ROUTES.segment, segmentVideoBody(payload));
+      if (!seg.ok) return res.status(seg.status).json(seg.data);
+      const objects = parseSamTokens(responsesText(seg.data));
+      if (!objects.length) return res.status(200).json({});
+      const first = objects[0];
+      return res.status(200).json({
+        label: payload.concept, frame: first.frame, objectId: first.objectId,
+        box: first.box, mask: first.mask
+      });
+    }
     // segment: SAM 3.1 segments the tap; Spark names the result.
-    // NOTE: /v1/responses accepts the image+point today but returns empty
-    // text in our probes — when Meta's SAM output format lands, the box/
-    // label extraction below picks it up without front-end changes.
     const seg = await callUpstream(ROUTES.segment, segmentBody(payload));
     if (!seg.ok) return res.status(seg.status).json(seg.data);
     const segJson = parseJsonText(responsesText(seg.data));

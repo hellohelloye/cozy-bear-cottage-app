@@ -1,11 +1,45 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { nameTappedObject, speakChinese } from '../lib/metaApi.js';
+import { nameTappedObject, segmentConcept, speakChinese } from '../lib/metaApi.js';
 
 // Point-and-Say 指着说 — the centerpiece (Oct 30-Nov 1 build-plan step).
 // Camera via getUserMedia, with photo upload as fallback. A tap sends the
 // photo (as data) + point to SAM 3.1 through the proxy; Muse Spark names
 // the object; Web Speech speaks it; a brave repeat earns a star
 // (participation-scored, ages 3-6).
+
+/** Turn the still photo into a ~1s clip so SAM 3.1 (a video tracker) can
+ *  segment it. Best-effort: any failure just keeps the vision box. */
+async function photoToVideoDataUrl(src) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = src.startsWith('data:') || src.startsWith('blob:') ? src : src;
+  await img.decode();
+  const scale = Math.min(1, 640 / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const mime = ['video/mp4', 'video/webm'].find((m) => window.MediaRecorder?.isTypeSupported(m));
+  if (!mime || !canvas.captureStream) throw new Error('clip unsupported');
+  const recorder = new MediaRecorder(canvas.captureStream(10), { mimeType: mime });
+  const chunks = [];
+  recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  const done = new Promise((resolve) => { recorder.onstop = resolve; });
+  recorder.start(100);
+  const redraw = setInterval(() => ctx.drawImage(img, 0, 0, canvas.width, canvas.height), 100);
+  await new Promise((r) => setTimeout(r, 900));
+  clearInterval(redraw);
+  recorder.stop();
+  await done;
+  const blob = new Blob(chunks, { type: mime });
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 async function photoToDataUrl(src) {
   if (src.startsWith('data:')) return src;
@@ -31,7 +65,7 @@ export default function PointAndSay({ targetWords, themeLabel }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const objectUrlRef = useRef(null);
-  const [photo, setPhoto] = useState('/assets/vivian-rainbow-apple.jpg');
+  const [photo, setPhoto] = useState('/assets/samples/winter-puppy.jpg');
   const [cameraOn, setCameraOn] = useState(false);
   const [tap, setTap] = useState(null); // {x, y} normalized 0..1
   const [result, setResult] = useState(null);
@@ -120,6 +154,18 @@ export default function PointAndSay({ targetWords, themeLabel }) {
         const hit = targetWords.find((w) => named.zh.includes(w.zh) || w.zh.includes(named.zh));
         setFound(hit || null);
         earnStar();
+        // Refine the outline with SAM 3.1 (video tracker): still photo ->
+        // short clip -> concept segmentation. Non-blocking; vision box stays.
+        if (named.en) {
+          try {
+            const clip = await photoToVideoDataUrl(photo);
+            const sam = await segmentConcept(clip, named.en);
+            if (sam?.box) {
+              setResult((prev) => (prev ? { ...prev, box: sam.box } : prev));
+              if (sam.mask) setHeard('SAM 3.1 found the outline too! 🎯');
+            }
+          } catch { /* clip unsupported here — vision outline is enough */ }
+        }
       } else {
         setFound(null);
         setResult({ zh: '', pinyin: '', en: 'Point-and-Say wakes up when SAM 3.1 access arrives. Try a target word below meanwhile!' });
