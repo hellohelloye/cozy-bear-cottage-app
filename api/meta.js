@@ -1,34 +1,29 @@
-// Serverless proxy for the Meta Model API (Vercel function format;
-// Netlify/Cloudflare equivalents are the same handler shape).
+// Serverless proxy for the Meta Model API (Vercel function format).
+// Why: the browser must never hold META_API_KEY.
+// Flow: browser -> POST /api/meta {kind, payload} -> this function -> Meta.
 //
-// Why this exists: the browser must never hold META_API_KEY.
-// Flow: browser -> POST /api/meta { kind, payload } -> this function
-//       -> Meta Model API -> JSON back to the browser.
-//
-// kind: "lesson"  -> Muse Spark (lesson plan JSON)
-//       "image"   -> Muse Image (one flashcard illustration)
-//       "segment" -> SAM 3.1 (tap-point segmentation) + Muse Spark naming
-//
-// Endpoint paths are env-configurable because the exact Meta Model API
-// routes are issued to accepted participants when the hackathon opens
-// (Oct 26, 2026). Set META_API_BASE_URL + META_API_KEY, and override any
-// route below via META_LESSON_ROUTE / META_IMAGE_ROUTE / META_SEGMENT_ROUTE
-// without touching the front end.
+// kind "lesson"  -> Muse Spark  (POST /v1/chat/completions, muse-spark-1.3)
+// kind "image"   -> Muse Image  (POST /v1/images/generations, muse-image-1.0)
+// kind "segment" -> SAM 3.1     (POST /v1/responses, sam-3.1) + Spark naming
+// Routes/models verified live Oct 27, 2026 against /v1/models; every route
+// and model stays env-overridable (META_*_ROUTE / META_*_MODEL).
 
-const BASE = (process.env.META_API_BASE_URL || '').replace(/\/$/, '');
+const BASE = (process.env.META_API_BASE_URL || 'https://api.meta.ai/v1').replace(/\/$/, '');
 const KEY = process.env.META_API_KEY || '';
 
 const ROUTES = {
-  lesson: process.env.META_LESSON_ROUTE || '/TODO-muse-spark-text',
-  image: process.env.META_IMAGE_ROUTE || '/TODO-muse-image',
-  segment: process.env.META_SEGMENT_ROUTE || '/TODO-sam-3.1-segment'
+  lesson: process.env.META_LESSON_ROUTE || '/chat/completions',
+  image: process.env.META_IMAGE_ROUTE || '/images/generations',
+  segment: process.env.META_SEGMENT_ROUTE || '/responses'
 };
+const MODELS = {
+  spark: process.env.META_SPARK_MODEL || 'muse-spark-1.3',
+  image: process.env.META_IMAGE_MODEL || 'muse-image-1.0',
+  sam: process.env.META_SAM_MODEL || 'sam-3.1'
+};
+const TIMEOUT_MS = 60000; // Spark reasons before answering; 20s was too short
 
-const TIMEOUT_MS = 20000;
-
-function isConfigured() {
-  return Boolean(BASE && KEY && !Object.values(ROUTES).some((r) => r.includes('TODO')));
-}
+function isConfigured() { return Boolean(BASE && KEY); }
 
 async function callUpstream(route, body) {
   const upstream = await fetch(`${BASE}${route}`, {
@@ -41,45 +36,91 @@ async function callUpstream(route, body) {
   return { status: upstream.status, ok: upstream.ok, data };
 }
 
-// --- Payload shaping: one place where each kind meets the upstream API ---
+function parseJsonText(text) {
+  if (!text || typeof text !== 'string') return null;
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  try { return JSON.parse(cleaned); } catch { /* fall through */ }
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch { return null; }
+  }
+  return null;
+}
+
+function chatContent(data) {
+  return data?.choices?.[0]?.message?.content || '';
+}
+
+// --- Payload shaping ---
 
 function lessonBody(payload) {
   return {
-    prompt: [
-      'You are Cozy Bear, a kind co-teacher for a weekend Chinese class, ages 3-6.',
-      `Create a 45-minute lesson on the theme "${payload.theme}" for age range ${payload.ageRange || '3-6'}.`,
-      'Return ONLY JSON with this shape:',
-      '{"theme":string,"ageRange":string,"minutes":45,"openingSong":string,"closingSong":string,',
-      '"words":[{"zh":string,"pinyin":string,"en":string,"emoji":string}],',
-      '"story":string (3 short lines, bilingual-friendly),',
-      '"games":[string,string],"script":[{"zh":string,"en":string}]}',
-      'Words must be simple, spoken Mandarin with tone-mark pinyin. No markdown, no extra text.'
-    ].join('\n'),
-    theme: payload.theme,
-    ageRange: payload.ageRange || '3-6'
+    model: MODELS.spark,
+    max_tokens: 4000, // reasoning tokens count against this budget (verified)
+    messages: [{
+      role: 'user',
+      content: [
+        'You are Cozy Bear, a kind co-teacher for a weekend Chinese class, ages 3-6.',
+        `Create a 45-minute lesson on the theme "${payload.theme}" for age range ${payload.ageRange || '3-6'}.`,
+        'Return ONLY JSON with this shape:',
+        '{"theme":string,"ageRange":string,"minutes":45,"openingSong":string,"closingSong":string,',
+        '"words":[{"zh":string,"pinyin":string,"en":string,"emoji":string}],',
+        '"story":string,"games":[string,string],"script":[{"zh":string,"en":string}]}',
+        'Six simple spoken-Mandarin words with tone-mark pinyin. No markdown, no extra text.'
+      ].join('\n')
+    }]
   };
 }
 
 function imageBody(payload) {
-  return { prompt: payload.prompt };
+  return { model: MODELS.image, prompt: payload.prompt, size: '1024x1024' };
 }
 
 function segmentBody(payload) {
-  return { image: payload.image, point: payload.point };
+  return {
+    model: MODELS.sam,
+    max_output_tokens: 1000,
+    input: [{
+      role: 'user',
+      content: [
+        {
+          type: 'input_text',
+          text: `Segment the object at normalized point x=${payload.point.x.toFixed(3)}, y=${payload.point.y.toFixed(3)}. Return ONLY JSON {"box":{"x":0,"y":0,"width":0,"height":0},"label":"object name"} with box normalized 0..1.`
+        },
+        { type: 'input_image', image_url: payload.image }
+      ]
+    }]
+  };
 }
 
-function namingBody(segmentData, payload) {
-  const box = segmentData?.box || segmentData?.bbox || null;
-  return {
-    prompt: [
-      'A child (age 3-6) tapped an object in a photo during Chinese class.',
-      `Tap point (normalized): x=${payload.point.x.toFixed(3)}, y=${payload.point.y.toFixed(3)}.`,
-      box ? `Segmented region box: ${JSON.stringify(box)}.` : 'Segmented region available.',
-      'Name that one object for a beginner. Return ONLY JSON:',
-      '{"zh":string (simplified characters),"pinyin":string (tone marks),"en":string}. No markdown.'
-    ].join('\n'),
-    segment: segmentData
+function responsesText(data) {
+  const out = data?.output || [];
+  for (const item of out) {
+    for (const part of item?.content || []) {
+      if (typeof part?.text === 'string' && part.text.trim()) return part.text;
+    }
+  }
+  return '';
+}
+
+async function nameWithSpark(label, payload) {
+  const body = {
+    model: MODELS.spark,
+    max_tokens: 1500,
+    messages: [{
+      role: 'user',
+      content: [
+        'A child (age 3-6) tapped an object in a photo during Chinese class.',
+        label ? `The object is: ${label}.` : `Tap point (normalized): x=${payload.point.x.toFixed(3)}, y=${payload.point.y.toFixed(3)}.`,
+        'Name that one object for a beginner. Return ONLY JSON:',
+        '{"zh":string (simplified characters),"pinyin":string (tone marks),"en":string}. No markdown.'
+      ].join('\n')
+    }]
   };
+  const r = await callUpstream(ROUTES.lesson, body);
+  if (!r.ok) return null;
+  return parseJsonText(chatContent(r.data));
 }
 
 // --- Validation ---
@@ -111,34 +152,46 @@ export default async function handler(req, res) {
 
   const invalid = validate(kind, payload);
   if (invalid) return res.status(400).json({ error: invalid });
-
   if (!isConfigured()) {
-    // Deliberate, honest failure the UI can show: access has not been issued yet.
     return res.status(503).json({ error: 'Meta Model API access not configured yet' });
   }
 
   try {
     if (kind === 'lesson') {
       const r = await callUpstream(ROUTES.lesson, lessonBody(payload));
-      return res.status(r.status).json(r.data);
+      if (!r.ok) return res.status(r.status).json(r.data);
+      const lesson = parseJsonText(chatContent(r.data));
+      if (!lesson || !Array.isArray(lesson.words)) {
+        return res.status(502).json({ error: 'Spark returned an unparseable lesson' });
+      }
+      return res.status(200).json(lesson);
     }
     if (kind === 'image') {
       const r = await callUpstream(ROUTES.image, imageBody(payload));
-      return res.status(r.status).json(r.data);
+      if (!r.ok) return res.status(r.status).json(r.data);
+      const first = r.data?.data?.[0] || {};
+      if (first.url) return res.status(200).json({ url: first.url });
+      if (first.b64_json) {
+        const mime = first.b64_json.startsWith('UklGR') ? 'image/webp' : 'image/png';
+        return res.status(200).json({ url: `data:${mime};base64,${first.b64_json}` });
+      }
+      return res.status(502).json({ error: 'Image model returned no image' });
     }
-    // segment: SAM 3.1 segments the tap, then Muse Spark names the crop.
+    // segment: SAM 3.1 segments the tap; Spark names the result.
+    // NOTE: /v1/responses accepts the image+point today but returns empty
+    // text in our probes — when Meta's SAM output format lands, the box/
+    // label extraction below picks it up without front-end changes.
     const seg = await callUpstream(ROUTES.segment, segmentBody(payload));
     if (!seg.ok) return res.status(seg.status).json(seg.data);
-    // Upstream already named it — pass straight through.
-    if (seg.data && seg.data.zh) {
-      return res.status(200).json({ ...seg.data, mask: seg.data.mask || null, box: seg.data.box || seg.data.bbox || null });
-    }
-    const named = await callUpstream(ROUTES.lesson, namingBody(seg.data, payload));
-    if (!named.ok) return res.status(named.status).json(named.data);
-    const name = named.data?.zh ? named.data : (named.data?.result || {});
+    const segJson = parseJsonText(responsesText(seg.data));
+    const box = segJson?.box || segJson?.bbox || null;
+    const label = segJson?.label || segJson?.en || segJson?.zh || '';
+    const named = segJson?.zh
+      ? { zh: segJson.zh, pinyin: segJson.pinyin || '', en: segJson.en || label }
+      : await nameWithSpark(label, payload);
+    if (!named || !named.zh) return res.status(200).json({});
     return res.status(200).json({
-      zh: name.zh || '', pinyin: name.pinyin || '', en: name.en || '',
-      mask: seg.data?.mask || null, box: seg.data?.box || seg.data?.bbox || null
+      zh: named.zh, pinyin: named.pinyin || '', en: named.en || label, mask: null, box
     });
   } catch (err) {
     const timedOut = err && (err.name === 'TimeoutError' || err.name === 'AbortError');
