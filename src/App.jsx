@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import LessonBuilder from './features/LessonBuilder.jsx';
 import Flashcards from './features/Flashcards.jsx';
 import PointAndSay from './features/PointAndSay.jsx';
+import AboutUs from './features/AboutUs.jsx';
 import { sampleLesson } from './data/sampleLesson.js';
 
 // Cozy Bear Cottage 小熊中文
@@ -12,7 +13,8 @@ import { sampleLesson } from './data/sampleLesson.js';
 const TABS = [
   { id: 'lesson', label: 'Lesson 备课' },
   { id: 'cards', label: 'Flashcards 闪卡' },
-  { id: 'say', label: 'Point-and-Say 指着说' }
+  { id: 'say', label: 'Point-and-Say 指着说' },
+  { id: 'about', label: 'About 关于我们' }
 ];
 
 const STORAGE_KEY = 'cozy-bear-lesson-v1';
@@ -70,6 +72,7 @@ export default function App() {
       )}
       {tab === 'cards' && <Flashcards words={lesson.words} themeLabel={lesson.theme} />}
       {tab === 'say' && <PointAndSay targetWords={lesson.words} themeLabel={lesson.theme} />}
+      {tab === 'about' && <AboutUs />}
       <footer>
         <p>Built with Muse Spark · Muse Image · SAM 3.1 (Meta Model API) · React + Vite (PWA) · Web Speech API</p>
       </footer>
