@@ -28,18 +28,19 @@ to a working offline path so a Saturday class never dead-ends.
 
 | Layer | File(s) | Responsibility |
 |---|---|---|
-| App shell | [src/App.jsx](../src/App.jsx) | Header art (pony/bear/fairy), 3 tabs, **shared lesson state** (`lesson`, `themeId`, `ageRange`) persisted to `localStorage` (`cozy-bear-lesson-v1`) |
+| App shell | [src/App.jsx](../src/App.jsx) | Header art (pony/bear/fairy), 4 tabs (Lesson / Flashcards / Point-and-Say / About), **shared lesson state** (`lesson`, `themeId`, `ageRange`) persisted to `localStorage` (`cozy-bear-lesson-v1`) |
 | Entry | [src/main.jsx](../src/main.jsx), [index.html](../index.html) | React 18 root, StrictMode |
 | Lesson Builder | [src/features/LessonBuilder.jsx](../src/features/LessonBuilder.jsx) | Theme + age pickers -> `generateLesson()` -> renders 45-min lesson; hosts the song player |
 | Song player | [src/features/SongPlayer.jsx](../src/features/SongPlayer.jsx) | Per-category catalog video (official FB/IG embeds) + offline karaoke (speechSynthesis, line highlight) + paste-a-link embed (YouTube/MP4) |
 | Flashcards | [src/features/Flashcards.jsx](../src/features/Flashcards.jsx) | Parallel image generation per word; print pack = flashcards + trace worksheet + coloring page (`@media print`) |
 | Point-and-Say | [src/features/PointAndSay.jsx](../src/features/PointAndSay.jsx) | Camera (`getUserMedia`) / upload / bundled photo; tap -> normalized point -> segment naming -> speak + star + Vivian sticker reward (`cozy-bear-stars`) |
+| About / Contact | [src/features/AboutUs.jsx](../src/features/AboutUs.jsx) | Static page (no API, works offline): project story, 3-feature summary, Saturday class poster (`/assets/class-poster.png`), team list, contact email/class/live-app/repo links |
 | Client API | [src/lib/metaApi.js](../src/lib/metaApi.js) | All model calls via proxy; response validation/normalization; honest fallbacks |
 | Catalog data | [src/data/themes.js](../src/data/themes.js) | 11 themes x word sets + songs (offline lesson factory `buildFallbackLesson`) |
 | Video catalog | [src/data/catalogVideos.js](../src/data/catalogVideos.js) | 111 reel links extracted from the dataset PDF annotations, grouped by section |
 | Sample lesson | [src/data/sampleLesson.js](../src/data/sampleLesson.js) | Hand-built colors lesson; highest-fidelity offline default |
 | Serverless proxy | [api/meta.js](../api/meta.js) | Validates `{kind, payload}`, shapes upstream calls, chains SAM -> Spark naming, maps errors (400/405/502/503) |
-| Assets | `public/assets/` | Web-sized copies (originals in `resources/`, never served): cutouts, 12 stickers, photos |
+| Assets | `public/assets/` | Web-sized copies (originals in `resources/`, never served): cutouts, 12 stickers, photos, Saturday class poster (`class-poster.png`, About page) |
 | Styling | [src/styles.css](../src/styles.css) | Vivian's light-blue palette, fluid layout to 1600px, print pipeline |
 
 ## 3. Runtime flows
@@ -111,6 +112,18 @@ walls fall back to open-externally. Karaoke mode needs no network:
 highlight. Teacher-pasted YouTube/MP4 links embed via `youtube-nocookie`
 and persist per category in `localStorage`.
 
+### 3.5 About / Contact (static)
+
+Fourth tab (`About 关于我们`, added Oct 28, 2026) renders
+[src/features/AboutUs.jsx](../src/features/AboutUs.jsx) — fully static, no
+`/api/meta` or network call beyond the bundled poster image
+(`/assets/class-poster.png`, from `public/assets/`). Content: project
+story (real Saturday class, Bear, Delaware), the 3-feature summary, team
+list, Saturday class poster, and Contact links (email
+`applebearscabinet26@gmail.com`, Saturdays 10:00–10:45 AM, live app, GitHub
+repo). The app-shell edit was minimal (import + tab + render line); the
+shared-lesson-state shell in `src/App.jsx` was not overwritten.
+
 ## 4. Contracts
 
 `POST /api/meta` — request `{kind, payload}`, kinds and payloads:
@@ -134,7 +147,9 @@ overrides. Secrets live only in Vercel env; `.env.example` stays empty.
   `npm run build` -> `dist/`. Fluid CSS, no backend state.
 - **Hosting:** Vercel project `cozybear/cozy-bear-cottage-app`;
   `vercel --prod` deploys the working tree; `main` on GitHub mirrors it
-  (push verified by commit hash). Git auto-deploy via `vercel git connect`
+  (push verified by commit hash). Latest prod (Oct 28, 2026): commit
+  `8ae05b6` (About page), verified HTTP 200 plus poster asset and About
+  bundle strings live. Git auto-deploy via `vercel git connect`
   is optional and still pending the owner's GitHub login connection.
 - **Local dev:** `vercel dev --listen 3000` (serves SPA + `/api/meta`);
   plain `npm run dev` works for UI-only work with fallbacks.
