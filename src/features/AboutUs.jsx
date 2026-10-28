@@ -52,7 +52,7 @@ export default function AboutUs() {
         <li><strong>Teacher / Team lead:</strong> Yukui McDonald</li>
         <li><strong>Email:</strong> <a href="mailto:applebearscabinet26@gmail.com">applebearscabinet26@gmail.com</a></li>
         <li><strong>Class:</strong> Saturdays, 10:00–10:45 AM · Bear, Delaware · ages 3–6</li>
-        <li><strong>Live app:</strong> <a href="https://cozy-bear-cottage-app.vercel.app">cozy-bear-cottage-app.vercel.app</a></li>
+        <li><strong>Live app:</strong> <a href="https://cozybear-cottage.vercel.app">cozybear-cottage.vercel.app</a></li>
         <li><strong>Code:</strong> <a href="https://github.com/hellohelloye/cozy-bear-cottage-app">github.com/hellohelloye/cozy-bear-cottage-app</a></li>
       </ul>
       <p>谢谢！ Thank you for visiting Cozy Bear Cottage.</p>

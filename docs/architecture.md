@@ -1,7 +1,7 @@
 # Cozy Bear Cottage 小熊中文 — Architecture
 
 > AI co-teacher for parent-run weekend Chinese classes (ages 3–6).
-> Live: https://cozy-bear-cottage-app.vercel.app · Repo: `hellohelloye/cozy-bear-cottage-app`
+> Live: https://cozybear-cottage.vercel.app · Repo: `hellohelloye/cozy-bear-cottage-app`
 > Scope note: this terminal and doc cover only the **cozybear** Vercel team project.
 
 ## 1. System context
@@ -145,11 +145,12 @@ overrides. Secrets live only in Vercel env; `.env.example` stays empty.
 
 - **Build:** Vite 5 + `vite-plugin-pwa` (autoUpdate SW, precache ~6 entries);
   `npm run build` -> `dist/`. Fluid CSS, no backend state.
-- **Hosting:** Vercel project `cozybear/cozy-bear-cottage-app`;
+- **Hosting:** Vercel project `cozybear/cozybear-cottage` (renamed from
+  `cozy-bear-cottage-app` Oct 28, 2026; production URL is now
+  https://cozybear-cottage.vercel.app — the old
+  `cozy-bear-cottage-app.vercel.app` alias was retired by the rename);
   `vercel --prod` deploys the working tree; `main` on GitHub mirrors it
-  (push verified by commit hash). Latest prod (Oct 28, 2026): commit
-  `8ae05b6` (About page), verified HTTP 200 plus poster asset and About
-  bundle strings live. Git auto-deploy via `vercel git connect`
+  (push verified by commit hash). Git auto-deploy via `vercel git connect`
   is optional and still pending the owner's GitHub login connection.
 - **Local dev:** `vercel dev --listen 3000` (serves SPA + `/api/meta`);
   plain `npm run dev` works for UI-only work with fallbacks.
