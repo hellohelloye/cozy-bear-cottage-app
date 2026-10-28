@@ -148,7 +148,8 @@ overrides. Secrets live only in Vercel env; `.env.example` stays empty.
 - **Hosting:** Vercel project `cozybear/cozybear-cottage` (renamed from
   `cozy-bear-cottage-app` Oct 28, 2026; production URL is now
   https://cozybear-cottage.vercel.app — the old
-  `cozy-bear-cottage-app.vercel.app` alias was retired by the rename);
+  `cozy-bear-cottage-app.vercel.app` domain remains assigned too, so
+  previously shared links keep working);
   `vercel --prod` deploys the working tree; `main` on GitHub mirrors it
   (push verified by commit hash). Git auto-deploy via `vercel git connect`
   is optional and still pending the owner's GitHub login connection.
