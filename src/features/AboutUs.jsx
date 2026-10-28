@@ -36,7 +36,7 @@ export default function AboutUs() {
 
       <h2>Our Team 我们的团队</h2>
       <ul>
-        <li><strong>Yukui McDonald</strong> — team lead, teacher, and builder</li>
+        <li><strong>Yukui McDonald</strong> — team lead </li>
         <li><strong>Patrick McDonald</strong> — team member</li>
         <li><strong>Xiaoyue He</strong> — team member, design &amp; photography</li>
         <li><strong>Shun Zhang</strong> — team member</li>

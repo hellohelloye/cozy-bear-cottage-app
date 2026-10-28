@@ -46,6 +46,24 @@ export default function KidsArtwork() {
 
   return (
     <section>
+      <h2>Our Little Artist 小画家</h2>
+      <p>Here is the artist at work — Vivian drawing:</p>
+      <div
+        className="artist-photos"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}
+      >
+        {ARTIST_PHOTOS.map((photo) => (
+          <figure key={photo.src} style={{ margin: 0, width: '45%' }}>
+            <img
+              src={photo.src}
+              alt={`${photo.en} — Vivian McDonald at work on her artwork`}
+              style={{ width: '100%', height: 'auto', borderRadius: '12px' }}
+            />
+            <figcaption>{photo.zh} · {photo.en}</figcaption>
+          </figure>
+        ))}
+      </div>
+
       <h2>Kids' Artwork 孩子们的画</h2>
       <p>
         Cozy Bear Cottage looks the way it does because of its young visual
@@ -68,24 +86,6 @@ export default function KidsArtwork() {
         ))}
       </div>
       <p>Artwork by Vivian McDonald, visual designer of Cozy Bear Cottage.</p>
-
-      <h2>Our Little Artist 小画家</h2>
-      <p>And here is the artist at work — Vivian drawing:</p>
-      <div
-        className="artist-photos"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}
-      >
-        {ARTIST_PHOTOS.map((photo) => (
-          <figure key={photo.src} style={{ margin: 0, width: '45%' }}>
-            <img
-              src={photo.src}
-              alt={`${photo.en} — Vivian McDonald at work on her artwork`}
-              style={{ width: '100%', height: 'auto', borderRadius: '12px' }}
-            />
-            <figcaption>{photo.zh} · {photo.en}</figcaption>
-          </figure>
-        ))}
-      </div>
 
       <h2>Upload Your Artwork 上传你的画</h2>
       <p>
