@@ -9,12 +9,6 @@ import React, { useState } from 'react';
 // artist name + picture title) to the teacher via Resend. Nothing is
 // sent until that button is pressed, and nothing is stored server-side.
 const ARTWORKS = [
-  { src: '/assets/point-say/rainbow-apple.jpg', zh: '彩虹苹果', en: 'Rainbow Apple' },
-  { src: '/assets/point-say/watermelon-family.jpg', zh: '西瓜一家', en: 'Watermelon Family' },
-  { src: '/assets/point-say/brachiosaurus-rainbow.jpg', zh: '彩虹恐龙', en: 'Rainbow Dinosaur' },
-  { src: '/assets/point-say/dalmatian-dog.png', zh: '小狗', en: 'Dalmatian Dog' },
-  { src: '/assets/point-say/cupcake-cherry.jpg', zh: '纸杯蛋糕', en: 'Cupcake' },
-  { src: '/assets/point-say/butterfly-rainbow.jpg', zh: '蝴蝶', en: 'Butterfly' },
   { src: '/assets/kids-art/kids-artwork-1.png', zh: '作品一', en: 'Artwork 1' },
   { src: '/assets/kids-art/kids-artwork-2.png', zh: '作品二', en: 'Artwork 2' },
   { src: '/assets/kids-art/kids-artwork-3.png', zh: '作品三', en: 'Artwork 3' }
