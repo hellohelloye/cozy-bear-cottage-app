@@ -11,12 +11,18 @@ flowchart LR
   Teacher["Teacher / child<br/>(phone, tablet, laptop browser)"]
   CDN["Vercel CDN<br/>static PWA (dist/)"]
   Fn["Vercel Function<br/>POST /api/meta"]
+  Fn2["Vercel Function<br/>POST /api/artwork"]
   Meta["Meta Model API<br/>api.meta.ai/v1"]
+  Resend["Resend<br/>api.resend.com"]
+  Mail["Teacher inbox<br/>applebearscabinet26@gmail.com"]
   DS["Dataset PDFs<br/>resources/ (source only)"]
 
   Teacher -->|HTTPS, installable PWA| CDN
   Teacher -->|POST /api/meta {kind, payload}| Fn
   Fn -->|Bearer META_API_KEY, server-side only| Meta
+  Teacher -->|POST /api/artwork {image, name, title}| Fn2
+  Fn2 -->|Bearer key, server-side only| Resend
+  Resend --> Mail
   DS -.->|extracted once at build time| CDN
 ```
 
@@ -28,19 +34,21 @@ to a working offline path so a Saturday class never dead-ends.
 
 | Layer | File(s) | Responsibility |
 |---|---|---|
-| App shell | [src/App.jsx](../src/App.jsx) | Header art (pony/bear/fairy), 4 tabs (Lesson / Flashcards / Point-and-Say / About), **shared lesson state** (`lesson`, `themeId`, `ageRange`) persisted to `localStorage` (`cozy-bear-lesson-v1`) |
+| App shell | [src/App.jsx](../src/App.jsx) | Header art (pony/bear/fairy), 5 tabs (Lesson / Flashcards / Point-and-Say / Kids' Artwork / About), **shared lesson state** (`lesson`, `themeId`, `ageRange`) persisted to `localStorage` (`cozy-bear-lesson-v1`) |
 | Entry | [src/main.jsx](../src/main.jsx), [index.html](../index.html) | React 18 root, StrictMode |
 | Lesson Builder | [src/features/LessonBuilder.jsx](../src/features/LessonBuilder.jsx) | Theme + age pickers -> `generateLesson()` -> renders 45-min lesson; hosts the song player |
 | Song player | [src/features/SongPlayer.jsx](../src/features/SongPlayer.jsx) | Per-category catalog video (official FB/IG embeds) + offline karaoke (speechSynthesis, line highlight) + paste-a-link embed (YouTube/MP4) |
 | Flashcards | [src/features/Flashcards.jsx](../src/features/Flashcards.jsx) | Parallel image generation per word; print pack = flashcards + trace worksheet + coloring page (`@media print`) |
 | Point-and-Say | [src/features/PointAndSay.jsx](../src/features/PointAndSay.jsx) | Camera (`getUserMedia`) / upload / bundled photo; tap -> normalized point -> segment naming -> speak + star + Vivian sticker reward (`cozy-bear-stars`) |
+| Kids' Artwork | [src/features/KidsArtwork.jsx](../src/features/KidsArtwork.jsx) | Our Little Artist photos first (`/assets/point-say/painting-easel-*.jpg`, Vivian painting), then gallery of 3 kids' paintings (`/assets/kids-art/`), then Upload Your Artwork: local preview -> downscale <=1200px -> `POST /api/artwork` on button press |
 | About / Contact | [src/features/AboutUs.jsx](../src/features/AboutUs.jsx) | Static page (no API, works offline): project story, 3-feature summary, Saturday class poster (`/assets/class-poster.png`), team list, contact email/class/live-app/repo links |
 | Client API | [src/lib/metaApi.js](../src/lib/metaApi.js) | All model calls via proxy; response validation/normalization; honest fallbacks |
 | Catalog data | [src/data/themes.js](../src/data/themes.js) | 11 themes x word sets + songs (offline lesson factory `buildFallbackLesson`) |
 | Video catalog | [src/data/catalogVideos.js](../src/data/catalogVideos.js) | 111 reel links extracted from the dataset PDF annotations, grouped by section |
 | Sample lesson | [src/data/sampleLesson.js](../src/data/sampleLesson.js) | Hand-built colors lesson; highest-fidelity offline default |
 | Serverless proxy | [api/meta.js](../api/meta.js) | Validates `{kind, payload}`, shapes upstream calls, chains SAM -> Spark naming, maps errors (400/405/502/503) |
-| Assets | `public/assets/` | Web-sized copies (originals in `resources/`, never served): cutouts, 12 stickers, photos, Saturday class poster (`class-poster.png`, About page) |
+| Artwork email | [api/artwork.js](../api/artwork.js) | Validates one image data URL (~3 MB cap) + name/title, emails it as a Resend attachment to the teacher; `503` until `RESEND_API_KEY` is set, `502` on Resend rejection |
+| Assets | `public/assets/` | Web-sized copies (originals in `resources/`, never served): cutouts, 12 stickers, photos, Saturday class poster (`class-poster.png`, About page), kids' paintings (`kids-art/`), Point-and-Say/Little-Artist photos (`point-say/`) |
 | Styling | [src/styles.css](../src/styles.css) | Vivian's light-blue palette, fluid layout to 1600px, print pipeline |
 
 ## 3. Runtime flows
@@ -114,7 +122,7 @@ and persist per category in `localStorage`.
 
 ### 3.5 About / Contact (static)
 
-Fourth tab (`About 关于我们`, added Oct 28, 2026) renders
+Fifth tab (`About 关于我们`, added Oct 28, 2026) renders
 [src/features/AboutUs.jsx](../src/features/AboutUs.jsx) — fully static, no
 `/api/meta` or network call beyond the bundled poster image
 (`/assets/class-poster.png`, from `public/assets/`). Content: project
@@ -123,6 +131,22 @@ list, Saturday class poster, and Contact links (email
 `applebearscabinet26@gmail.com`, Saturdays 10:00–10:45 AM, live app, GitHub
 repo). The app-shell edit was minimal (import + tab + render line); the
 shared-lesson-state shell in `src/App.jsx` was not overwritten.
+
+### 3.6 Kids' Artwork upload email (Resend)
+
+Fourth tab (`Kids' Artwork 孩子们的画`, added Oct 28, 2026) renders
+[src/features/KidsArtwork.jsx](../src/features/KidsArtwork.jsx) in this
+order: **Our Little Artist** (Vivian painting-easel photos) -> gallery
+(the 3 new kids' paintings only; the 6 Point-and-Say pictures were
+removed from the gallery Oct 28) -> **Upload Your Artwork**. Each upload
+is previewed locally, downscaled in-browser to <=1200 px JPEG, and only
+sent when its *Email to teacher* button is pressed:
+`POST /api/artwork {image: dataURL, name, title}` ->
+[api/artwork.js](../api/artwork.js) validates type/size -> Resend
+`POST https://api.resend.com/emails` with the picture attached, subject
+`Kids' Artwork: "<title>" by <name>`, to `applebearscabinet26@gmail.com`
+(env `ARTWORK_EMAIL_TO`). No server storage; failures show honestly
+(`503` = key not configured yet) and the picture stays on-device.
 
 ## 4. Contracts
 
@@ -141,6 +165,22 @@ Env: `META_API_KEY` (secret), `META_API_BASE_URL` (default
 `https://api.meta.ai/v1`), optional `META_*_ROUTE` / `META_*_MODEL`
 overrides. Secrets live only in Vercel env; `.env.example` stays empty.
 
+`POST /api/artwork` — request `{image, name, title}`:
+
+| field | rule |
+|---|---|
+| `image` | `data:image/(jpeg|png|webp|gif);base64,...`, base64 <= ~4 M chars (~3 MB) |
+| `name` / `title` | Free text, sanitized to 120 chars (defaults: young artist / untitled) |
+
+Success: `200 {id, to}` (Resend message id). Errors mirror the proxy:
+`405` non-POST · `400` missing/oversized/non-image · `503`
+`RESEND_API_KEY` unset · `502` Resend rejection/timeout (30s budget).
+Env: `RESEND_API_KEY` (secret, required), `ARTWORK_EMAIL_TO` (default
+`applebearscabinet26@gmail.com`), `ARTWORK_EMAIL_FROM` (default
+`Cozy Bear Cottage <onboarding@resend.dev>`; Resend's onboarding sender
+only delivers to the Resend account owner's address until a domain is
+verified in Resend).
+
 ## 5. Deployment & operations
 
 - **Build:** Vite 5 + `vite-plugin-pwa` (autoUpdate SW, precache ~6 entries);
@@ -157,9 +197,12 @@ overrides. Secrets live only in Vercel env; `.env.example` stays empty.
   plain `npm run dev` works for UI-only work with fallbacks.
 - **Data:** no database. Runtime state = React state + `localStorage`
   (lesson, stars, pasted song links). Content data ships as static JS.
-- **Tests:** `npm test` — Node built-in runner, [tests/meta-proxy.test.mjs](../tests/meta-proxy.test.mjs)
-  (5 tests, upstream stubbed): SAM-empty -> vision naming regression,
-  SAM token parsing + video branch, point validation, lesson parsing.
+- **Tests:** `npm test` — Node built-in runner (8 tests, upstream
+  stubbed): [tests/meta-proxy.test.mjs](../tests/meta-proxy.test.mjs)
+  (SAM-empty -> vision naming, SAM token parsing + video branch, point
+  validation, lesson parsing) and
+  [tests/artwork-api.test.mjs](../tests/artwork-api.test.mjs) (Resend
+  attachment + name/title, invalid/oversized payloads, GET rejection).
 
 ## 6. Key decisions & trade-offs
 
@@ -184,6 +227,10 @@ overrides. Secrets live only in Vercel env; `.env.example` stays empty.
 - Still-photo SAM path depends on browser `MediaRecorder` clip capture
   (best-effort); unsupported browsers keep the vision box.
 - Real-browser QA (video embeds, camera, print) — pending owner pass.
+- Artwork email activation: set `RESEND_API_KEY` in Vercel Production
+  (Resend account under the cabinet Gmail, or verify a domain and set
+  `ARTWORK_EMAIL_FROM`), redeploy, and confirm `/api/artwork` returns
+  `200` instead of today's `503`.
 - Key hygiene: rotate any key shared out-of-band; update Vercel secret.
 - Submission track: Nov 2 Saturday-class test -> Nov 3 demo recording ->
   Nov 4, 9:00 PM ET submission (live link above).
