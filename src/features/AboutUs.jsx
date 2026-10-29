@@ -41,6 +41,7 @@ export default function AboutUs() {
         <li><strong>Xiaoyue He</strong> — team member, design &amp; photography</li>
         <li><strong>Shun Zhang</strong> — team member</li>
         <li><strong>Vivian McDonald</strong> — visual designer (the artwork and palette are hers)</li>
+        <li><strong>Evelyn McDonald</strong> — Our fun Player</li>
       </ul>
 
       <h2>Contact Us 联系我们</h2>

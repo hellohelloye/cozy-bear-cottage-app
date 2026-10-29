@@ -77,7 +77,7 @@ export default function App() {
       {tab === 'art' && <KidsArtwork />}
       {tab === 'about' && <AboutUs />}
       <footer>
-        <p>Built with Muse Spark · Muse Image · SAM 3.1 (Meta Model API) · React + Vite (PWA) · Web Speech API</p>
+        <p>CozyBear Copyright @2026</p>
       </footer>
     </main>
   );
