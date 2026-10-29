@@ -1,0 +1,31 @@
+sequenceDiagram
+    actor Child
+    participant Point as Point-and-Say
+    participant API as /api/meta
+    participant SAM as SAM 3.1
+    participant Spark as Muse Spark
+
+    Child->>Point: Tap photo
+    Point->>API: Image data URL + normalized tap point
+    API->>SAM: Still-image segmentation request
+    SAM-->>API: Segmentation response
+    alt Response includes a Chinese name
+        API->>API: Use returned name and box
+    else Naming needed
+        API->>Spark: Photo + tap point for vision naming
+        Spark-->>API: Chinese, pinyin, English, box
+        opt Vision naming fails and SAM supplied a label
+            API->>Spark: Name the supplied label
+            Spark-->>API: Chinese, pinyin, English
+        end
+    end
+    API-->>Point: Name and bounding box
+    Point->>Point: Speak Chinese and award star
+    opt Browser supports short-clip capture
+        Point->>Point: Convert photo into a short video
+        Point->>API: Video + recognized English concept
+        API->>SAM: Track concept in video
+        SAM-->>API: Per-frame box and mask tokens
+        API-->>Point: Parsed box and raw mask data
+        Point->>Point: Refine displayed bounding box
+    end
