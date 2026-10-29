@@ -160,5 +160,4 @@ Artwork page.
 ## Sister project
 
 The same team also built **WalletShield** — an AI technology-control copilot
-for digital currency wallets, from team lead Yukui McDonald's PhD research at
-the University of Delaware: https://walletshield.yollin.me
+for digital currency wallets: https://walletshield.yollin.me
