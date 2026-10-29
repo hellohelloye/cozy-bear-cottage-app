@@ -1,7 +1,7 @@
 # Cozy Bear Cottage 小熊中文
 
 **Live app:** https://cozybear-cottage.vercel.app
-**Team:** Yukui McDonald (team lead / teacher), Patrick McDonald, Xiaoyue He, Shun Zhang
+**Team:** Yukui McDonald (team lead), Patrick McDonald, Xiaoyue He, Shun Zhang
 **Artwork:** Vivian McDonald (visual design) and Evelyn McDonald
 **Contact:** applebearscabinet26@gmail.com
 **Event:** Meta Global AI Developer Hackathon (Indie track) — submission due Nov 4, 2026, 9:00 PM ET
